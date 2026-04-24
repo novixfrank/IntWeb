@@ -5,17 +5,16 @@
 #include <stdio.h>
 
 /* ══════════════════════════════════════════════
- *  Pool
+ * Pool
  * ══════════════════════════════════════════════ */
-static MCTSPool g_pool;          /* pool primario (AI in partita e ricerche singole) */
-static MCTSPool g_pool_secondary; /* pool secondario (usato in tuning per il secondo giocatore) */
+static MCTSPool g_pool;
+static MCTSPool g_pool_secondary;
 
 MCTSPool *mcts_pool_create(void) {
     mcts_pool_reset(&g_pool);
     return &g_pool;
 }
 
-/* Secondo pool separato per tuning/analisi dove due ricerche devono coesistere */
 MCTSPool *mcts_pool_secondary(void) {
     mcts_pool_reset(&g_pool_secondary);
     return &g_pool_secondary;
@@ -29,12 +28,12 @@ void mcts_pool_reset(MCTSPool *pool) {
 }
 
 static inline int32_t pool_alloc(MCTSPool *pool) {
-    if (pool->next >= MCTS_POOL_SIZE - 1) return -1;   /* pool pieno */
+    if (pool->next >= MCTS_POOL_SIZE - 1) return -1;
     return pool->next++;
 }
 
 /* ══════════════════════════════════════════════
- *  Codifica / decodifica mossa nel nodo
+ * Codifica / decodifica mossa nel nodo
  * ══════════════════════════════════════════════ */
 static inline void node_encode_move(MCTSNode *nd, const Move *m) {
     nd->from      = m->from;
@@ -57,14 +56,7 @@ static inline Move node_decode_move(const MCTSNode *nd) {
     return m;
 }
 
-/* ══════════════════════════════════════════════
- *  Prior euristico per PUCT (singola mossa, normalizzazione approssimata)
- *  Viene chiamato durante l'espansione di ogni figlio.
- *  Formula: base=1.0 + catture * prior_cap + promozione * prior_promo
- *  Dividiamo per (num_legal * 2) come stima della somma totale.
- * ══════════════════════════════════════════════ */
-static inline float compute_prior_puct(const Move *m, const MCTSParams *p,
-                                        int num_legal) {
+static inline float compute_prior_puct(const Move *m, const MCTSParams *p, int num_legal) {
     float pr = 1.0f;
     if (m->num_caps > 0) pr += p->prior_cap  * (float)m->num_caps;
     if (m->promotes)     pr += p->prior_promo;
@@ -73,10 +65,9 @@ static inline float compute_prior_puct(const Move *m, const MCTSParams *p,
 }
 
 /* ══════════════════════════════════════════════
- *  Selezione UCB1 / PUCT
+ * Selezione UCB1 / PUCT
  * ══════════════════════════════════════════════ */
-static int32_t select_child(const MCTSPool *pool, int32_t node_idx,
-                             const MCTSParams *p) {
+static int32_t select_child(const MCTSPool *pool, int32_t node_idx, const MCTSParams *p) {
     const MCTSNode *nd   = &pool->nodes[node_idx];
     float  log_n  = logf((float)(nd->n + 1));
     float  sqrt_n = sqrtf((float)nd->n);
@@ -89,11 +80,9 @@ static int32_t select_child(const MCTSPool *pool, int32_t node_idx,
         float q = (ch->n > 0) ? ch->w / (float)ch->n : 0.0f;
 
         if (p->model == SEL_UCB1) {
-            float expl = (ch->n > 0) ? p->C * sqrtf(2.0f * log_n / (float)ch->n)
-                                      : 1e10f;
+            float expl = (ch->n > 0) ? p->C * sqrtf(2.0f * log_n / (float)ch->n) : 1e10f;
             score = q + expl;
         } else {
-            /* PUCT: Q(a) + c_puct * P(a) * sqrt(N) / (1 + n(a)) */
             score = q + p->c_puct * ch->prior * sqrt_n / (1.0f + ch->n);
         }
         if (score > best) { best = score; best_child = c; }
@@ -102,11 +91,8 @@ static int32_t select_child(const MCTSPool *pool, int32_t node_idx,
 }
 
 /* ══════════════════════════════════════════════
- *  Rollout (simulazione rapida)
- *  Politica semi-casuale:
- *    - catture obbligatorie (regola Dama Italiana)
- *    - preferenza per mosse di promozione
- *    - altrimenti casuale uniforme
+ * Rollout (simulazione rapida)
+ * Restituisce il punteggio ASSOLUTO: +1 se vince NERO, -1 se vince BIANCO.
  * ══════════════════════════════════════════════ */
 static float rollout(Board b, const MCTSParams *p) {
     int depth = 0;
@@ -115,30 +101,14 @@ static float rollout(Board b, const MCTSParams *p) {
     for (;;) {
         int n = board_gen_moves(&b, moves);
 
-        /* Condizioni terminali:
-         *   - n == 0 → chi deve muovere non ha mosse (perde)
-         *   - board_result != 0 → qualcuno ha perso tutti i pezzi
-         *   - b.nocap >= 80 → pareggio per regola delle 40 mosse
-         *   - depth >= rollout_depth → taglio per tempo
-         */
-        if (n == 0) {
-            /* Chi deve muovere non ha mosse: perde */
-            return (b.stm == BLACK) ? -1.0f : 1.0f;
-        }
-        if (b.nocap >= 80) {
-            return 0.0f;   /* pareggio */
-        }
+        if (n == 0) return (b.stm == BLACK) ? -1.0f : 1.0f;
+        if (b.nocap >= 80) return 0.0f;
         int res = board_result(&b, n);
-        if (res != 0) {
-            return (float)res;
-        }
-        if (depth >= p->rollout_depth) {
-            return 0.0f;   /* taglio: considera pareggio */
-        }
-        /* Sceglie la mossa */
+        if (res != 0) return (float)res;
+        if (depth >= p->rollout_depth) return 0.0f;
+
         int chosen = 0;
         if (n > 1) {
-            /* Piccola euristica: preferisce mosse con più catture o promozioni */
             int best_caps  = -1;
             bool best_prom = false;
             int  best_idx  = 0;
@@ -150,8 +120,6 @@ static float rollout(Board b, const MCTSParams *p) {
                     best_idx  = i;
                 }
             }
-            /* Con 30% di probabilità prende comunque una mossa casuale
-               (diversità / evita loop locali) */
             if (best_caps > 0 || (rand() % 100) < 70) {
                 chosen = best_idx;
             } else {
@@ -164,116 +132,105 @@ static float rollout(Board b, const MCTSParams *p) {
 }
 
 /* ══════════════════════════════════════════════
- *  Espansione e ricorsione MCTS (negamax)
- *  Ritorna il reward dal punto di vista del giocatore
- *  che ha MOSSO per arrivare a questo nodo.
+ * MCTS Ricorsivo (Negamax)
+ * Propaga correttamente il reward invertendolo in base al turno.
+ * Introduce un DECADIMENTO (0.99) per premiare le vittorie veloci
+ * e ritardare le sconfitte (riduzione del danno).
  * ══════════════════════════════════════════════ */
-static float mcts_rec(MCTSPool *pool, int32_t node_idx, Board board,
-                      const MCTSParams *p, int depth) {
+static float mcts_rec(MCTSPool *pool, int32_t node_idx, Board board, const MCTSParams *p, int depth) {
     if (node_idx < 0) return 0.0f;
     MCTSNode *nd = &pool->nodes[node_idx];
     nd->n++;
 
-    /* ── Terminale: numero mosse calcolato al livello superiore ── */
-    /* Calcoliamo comunque le mosse per verificare lo stato */
     Move moves[MAX_MOVES];
     int  nmoves;
 
     if (nd->num_legal < 0) {
-        /* Prima visita: calcola mosse legali */
         nmoves = board_gen_moves(&board, moves);
         nd->num_legal = (int16_t)nmoves;
     } else {
         nmoves = nd->num_legal;
-        if (nmoves > 0) board_gen_moves(&board, moves); /* ri-genera per usarle */
+        if (nmoves > 0) board_gen_moves(&board, moves);
     }
 
     int res = board_result(&board, nmoves);
+    float abs_result;
 
-    /* Posizione terminale:
-     *   nmoves == 0  → chi muove non ha mosse (perde)
-     *   res != 0     → qualcuno senza pezzi
-     *   nocap >= 80  → pareggio regola 40 mosse (board_result restituisce 0,
-     *                  ma il gioco deve terminare lo stesso)
-     */
+    /* Nodo Terminale */
     if (nmoves == 0 || res != 0 || board.nocap >= 80) {
-        float r;
-        if (nmoves == 0)       r = -1.0f;  /* chi muove perde */
-        else if (board.nocap >= 80) r = 0.0f;  /* pareggio */
-        else r = (board.stm == BLACK) ? (float)res : -(float)res;
-        nd->w += r;
-        return -r;
+        if (nmoves == 0) abs_result = (board.stm == BLACK) ? -1.0f : 1.0f;
+        else if (board.nocap >= 80) abs_result = 0.0f;
+        else abs_result = (float)res;
+        
+        /* Reward relativo per chi ha MOSSO per arrivare qui */
+        float reward_for_parent = (board.stm == BLACK) ? -abs_result : abs_result;
+        nd->w += reward_for_parent;
+        
+        return abs_result * 0.99f; /* Decadimento per premiare win veloci */
     }
 
-    float result;
-
     if (nd->num_children < nd->num_legal) {
-        /* ── Espansione: creo il prossimo figlio ── */
-        int ci = nd->num_children;   /* indice della mossa da espandere */
-        /* ri-genera se necessario (già fatto sopra) */
+        /* Espansione */
+        int ci = nd->num_children;
         const Move *m = &moves[ci];
 
         int32_t child_idx = pool_alloc(pool);
         if (child_idx < 0) {
-            /* Pool pieno: rollout dal nodo corrente */
             Board b2 = board;
             board_do_move(&b2, m);
-            result = rollout(b2, p);
-            nd->w += result;
-            return -result;
+            abs_result = rollout(b2, p);
+        } else {
+            MCTSNode *ch = &pool->nodes[child_idx];
+            memset(ch, 0, sizeof(*ch));
+            ch->parent       = node_idx;
+            ch->first_child  = -1;
+            ch->next_sib     = nd->first_child;
+            ch->num_legal    = -1;
+            ch->num_children = 0;
+            ch->prior        = 1.0f / nd->num_legal;
+            node_encode_move(ch, m);
+
+            nd->first_child = child_idx;
+            nd->num_children++;
+
+            if (p->model == SEL_PUCT) {
+                ch->prior = compute_prior_puct(m, p, nd->num_legal);
+            }
+
+            Board b2 = board;
+            board_do_move(&b2, m);
+            abs_result = rollout(b2, p);
+            
+            ch->n++;
+            float reward_for_ch = (board.stm == BLACK) ? abs_result : -abs_result;
+            ch->w += reward_for_ch;
         }
-
-        MCTSNode *ch = &pool->nodes[child_idx];
-        memset(ch, 0, sizeof(*ch));
-        ch->parent       = node_idx;
-        ch->first_child  = -1;
-        ch->next_sib     = nd->first_child;
-        ch->num_legal    = -1;   /* non ancora calcolato */
-        ch->num_children = 0;
-        ch->prior        = 1.0f / nd->num_legal;
-        node_encode_move(ch, m);
-
-        /* Inserisce in testa alla lista figli */
-        nd->first_child = child_idx;
-        nd->num_children++;
-
-        /* Prior PUCT: assegnato con funzione inlining */
-        if (p->model == SEL_PUCT) {
-            ch->prior = compute_prior_puct(m, p, nd->num_legal);
-        }
-
-        /* Applica mossa e fai rollout */
-        Board b2 = board;
-        board_do_move(&b2, m);
-        result = rollout(b2, p);
-        ch->n++;
-        ch->w += result;
-        result = -result;
     } else {
-        /* ── Selezione: sceglie il figlio migliore via UCB/PUCT ── */
+        /* Selezione */
         int32_t best = select_child(pool, node_idx, p);
         if (best < 0) {
-            /* Nessun figlio (strano): rollout */
-            result = rollout(board, p);
+            abs_result = rollout(board, p);
         } else {
             Move m = node_decode_move(&pool->nodes[best]);
             Board b2 = board;
             board_do_move(&b2, &m);
-            result = mcts_rec(pool, best, b2, p, depth + 1);
+            abs_result = mcts_rec(pool, best, b2, p, depth + 1);
         }
     }
 
-    nd->w += result;
-    return -result;
+    /* Backpropagation al padre */
+    float reward_for_parent = (board.stm == BLACK) ? -abs_result : abs_result;
+    nd->w += reward_for_parent;
+    
+    return abs_result * 0.99f; /* Applica il decadimento (Depth Decay) propagando a ritroso */
 }
 
 /* ══════════════════════════════════════════════
- *  mcts_best_move  –  ricerca principale
+ * mcts_best_move  –  ricerca principale + LOG
  * ══════════════════════════════════════════════ */
 Move mcts_best_move(const Board *b, const MCTSParams *p, MCTSPool *pool) {
     mcts_pool_reset(pool);
 
-    /* Crea radice */
     int32_t root = pool_alloc(pool);
     MCTSNode *rnd = &pool->nodes[root];
     memset(rnd, 0, sizeof(*rnd));
@@ -286,9 +243,7 @@ Move mcts_best_move(const Board *b, const MCTSParams *p, MCTSPool *pool) {
     double start = now_sec();
     pool->sims = 0;
 
-    /* Loop anytime: continua finché il tempo non scade */
     while (now_sec() - start < p->time_limit) {
-        /* Batch di simulazioni per ridurre l'overhead di clock_gettime */
         for (int batch = 0; batch < 16; batch++) {
             Board brd = *b;
             mcts_rec(pool, root, brd, p, 0);
@@ -296,36 +251,57 @@ Move mcts_best_move(const Board *b, const MCTSParams *p, MCTSPool *pool) {
         }
     }
 
-    /* Sceglie il figlio della radice con più visite */
     Move best_move;
     memset(&best_move, 0, sizeof(best_move));
     int   best_n = -1;
     float best_w = -1e30f;
 
-    /* Genera le mosse della radice per identificare il best move */
     Move root_moves[MAX_MOVES];
     int  n_root = board_gen_moves(b, root_moves);
 
-    /* Trova il figlio più visitato */
+    /* Criterio: Robust Child (sceglie quello con più visite). Evita errori estremi. */
     for (int32_t c = rnd->first_child; c >= 0; c = pool->nodes[c].next_sib) {
         const MCTSNode *ch = &pool->nodes[c];
-        if (ch->n > best_n || (ch->n == best_n && ch->w / (ch->n+1) > best_w)) {
+        if (ch->n > best_n || (ch->n == best_n && (ch->w / (ch->n+1)) > best_w)) {
             best_n    = ch->n;
             best_w    = (ch->n > 0) ? ch->w / ch->n : 0.0f;
             best_move = node_decode_move(ch);
         }
     }
 
-    /* Se nessun figlio creato (timeout brevissimo), prendi la prima mossa */
     if (best_n < 0 && n_root > 0) {
         best_move = root_moves[0];
     }
+
+    /* ── LOG DEL RAGIONAMENTO A TERMINALE ── */
+    printf("\n==========================================================\n");
+    printf("🎯 RAGIONAMENTO IA (MCTS) COMPLETATO\n");
+    printf("==========================================================\n");
+    printf("Turno: %s (Obiettivo: Vincere o Minimizzare i Danni)\n", b->stm == BLACK ? "NERO" : "BIANCO");
+    printf("Modello Utilizzato: %s\n", p->model == SEL_UCB1 ? "UCB1 Classico" : "PUCT (AlphaGo)");
+    printf("Simulazioni Casuali (Rollout) Effettuate: %lld\n", (long long)pool->sims);
+    printf("\n-> MOSSA SCELTA: Da Casella %d a Casella %d\n", best_move.from, best_move.to);
+    printf("-> Probabilità di Vittoria stimata dell'IA (Win Rate): %.1f%%\n", best_w * 50.0f + 50.0f);
+    printf("\nAnalisi e Giustificazione delle Alternative Valutate:\n");
+    
+    for (int32_t c = rnd->first_child; c >= 0; c = pool->nodes[c].next_sib) {
+        const MCTSNode *ch = &pool->nodes[c];
+        Move m = node_decode_move(ch);
+        float wr = (ch->n > 0) ? ch->w / ch->n : 0.0f;
+        
+        printf(" - Opzione [%2d -> %2d]: Testata %6d volte | WR: %5.1f%% ", m.from, m.to, ch->n, wr * 50.0f + 50.0f);
+        if (m.from == best_move.from && m.to == best_move.to) {
+            printf(" <<< PRESCELTA (Bilanciamento ottimale visite/profitto)");
+        }
+        printf("\n");
+    }
+    printf("==========================================================\n\n");
 
     return best_move;
 }
 
 /* ══════════════════════════════════════════════
- *  Statistiche
+ * Statistiche
  * ══════════════════════════════════════════════ */
 MCTSStats mcts_get_stats(const MCTSPool *pool) {
     MCTSStats s;
@@ -336,7 +312,6 @@ MCTSStats mcts_get_stats(const MCTSPool *pool) {
 
     const MCTSNode *root = &pool->nodes[0];
     if (root->n > 0) {
-        /* Trova il figlio più visitato */
         int best_n = -1;
         for (int32_t c = root->first_child; c >= 0; c = pool->nodes[c].next_sib) {
             const MCTSNode *ch = &pool->nodes[c];
@@ -366,25 +341,18 @@ void mcts_print_pv(const MCTSPool *pool, const Board *b, int depth) {
         }
         if (best < 0) break;
         Move m = node_decode_move(&pool->nodes[best]);
-        printf("[%d→%d] ", m.from, m.to);
+        printf("[%d->%d] ", m.from, m.to);
         board_do_move(&cur, &m);
         node = best;
     }
     printf("\n");
 }
 
-/* ══════════════════════════════════════════════
- *  mcts_init / mcts_search
- *  API alternativa (dichiarata in mcts.h)
- *  Thin wrapper attorno a mcts_best_move.
- * ══════════════════════════════════════════════ */
 void mcts_init(MCTSPool *pool, const Board *root_board) {
-    /* Reset del pool e pre-espansione della radice. */
     mcts_pool_reset(pool);
-    (void)root_board;   /* La board viene passata direttamente a mcts_search */
+    (void)root_board;
 }
 
 Move mcts_search(MCTSPool *pool, const Board *b, const MCTSParams *p) {
-    /* Deleghiamo a mcts_best_move che gestisce reset + ricerca + best-child. */
     return mcts_best_move(b, p, pool);
 }
