@@ -15,6 +15,8 @@
 /* ══════════════════════════════════════════════════════════════════════════════
  * GESTIONE MEMORIA (POOL)
  * ══════════════════════════════════════════════════════════════════════════════ */
+static MCTSPool g_pool;          /* pool primario (AI in partita e ricerche singole) */
+static MCTSPool g_pool_secondary; /* pool secondario (usato in tuning per il secondo giocatore) */
 
 /**
  * @brief Inizializza e restituisce il puntatore al pool di memoria primario.
