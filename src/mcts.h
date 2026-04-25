@@ -102,6 +102,13 @@ typedef struct {
 MCTSStats mcts_get_stats(const MCTSPool *pool);
 void      mcts_print_pv(const MCTSPool *pool, const Board *b, int depth);
 
+/* ══════════════════════════════════════════════
+ *  Controllo log su terminale
+ *  Default: disabilitato. Abilitare con mcts_set_log(1)
+ *  (chiamato da main.c quando viene passato --log).
+ * ══════════════════════════════════════════════ */
+void mcts_set_log(int enabled);   /* 1 = log attivo, 0 = silenzioso */
+
 /* Clock utility */
 static inline double now_sec(void) {
     struct timespec ts;

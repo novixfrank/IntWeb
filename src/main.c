@@ -195,7 +195,7 @@ int main(int argc, char *argv[]) {
     board_lookup_init();
 
     /* ── Modalità riga di comando ── */
-    if (argc >= 2) {
+    if (argc >= 2 && strcmp(argv[1], "--log") != 0) {
         if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
             print_usage(argv[0]);
             return 0;
@@ -271,6 +271,16 @@ int main(int argc, char *argv[]) {
     }
 
     /* ── Modalità GUI (default) ── */
+
+    /* Controlla se è stato passato --log (può essere il primo o l'unico argomento) */
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--log") == 0) {
+            mcts_set_log(1);
+            printf("[LOG MCTS abilitato: il ragionamento dell'IA verra' stampato su terminale]\n\n");
+            break;
+        }
+    }
+
     GUI g;
     if (gui_init(&g) != 0) {
         fprintf(stderr, "Errore inizializzazione GUI.\n");

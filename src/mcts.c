@@ -15,8 +15,15 @@
 /* ══════════════════════════════════════════════════════════════════════════════
  * GESTIONE MEMORIA (POOL)
  * ══════════════════════════════════════════════════════════════════════════════ */
-static MCTSPool g_pool;          /* pool primario (AI in partita e ricerche singole) */
+static MCTSPool g_pool;           /* pool primario (AI in partita e ricerche singole) */
 static MCTSPool g_pool_secondary; /* pool secondario (usato in tuning per il secondo giocatore) */
+
+/* Flag log: 0 = silenzioso (default), 1 = stampa ragionamento su terminale */
+static int g_mcts_log_enabled = 0;
+
+void mcts_set_log(int enabled) {
+    g_mcts_log_enabled = enabled;
+}
 
 /**
  * @brief Inizializza e restituisce il puntatore al pool di memoria primario.
@@ -335,24 +342,27 @@ Move mcts_best_move(const Board *b, const MCTSParams *p, MCTSPool *pool) {
         if (board_gen_moves(b, mvs) > 0) best_move = mvs[0];
     }
 
-    /* ── LOGGING LOGICA DECISIONALE ── */
-    printf("\n==========================================================\n");
-    printf("🎯 RAGIONAMENTO IA (MCTS) COMPLETATO\n");
-    printf("==========================================================\n");
-    printf("Turno: %s | Obiettivo: Vittoria Massima / Danno Minimo\n", b->stm == BLACK ? "NERO" : "BIANCO");
-    printf("Simulazioni: %lld | Nodi creati: %d\n", (long long)pool->sims, pool->next);
-    printf("\n-> MOSSA SCELTA: [%d -> %d]\n", best_move.from, best_move.to);
-    printf("-> Win Rate IA stimata: %.1f%%\n", best_w * 50.0f + 50.0f);
-    printf("\nGiustificazione rispetto alle alternative:\n");
-    for (int32_t c = rnd->first_child; c >= 0; c = pool->nodes[c].next_sib) {
-        const MCTSNode *ch = &pool->nodes[c];
-        Move m = node_decode_move(ch);
-        float wr = (ch->n > 0) ? ch->w / ch->n : 0.0f;
-        printf(" - [%2d -> %2d]: WR %5.1f%% (%d visite)%s\n", 
-               m.from, m.to, wr * 50.0f + 50.0f, ch->n,
-               (m.from == best_move.from && m.to == best_move.to) ? " [BEST]" : "");
+
+    /* ── LOGGING LOGICA DECISIONALE (solo se abilitato con --log) ── */
+    if (g_mcts_log_enabled) {
+        printf("\n==========================================================\n");
+        printf("RAGIONAMENTO IA (MCTS) COMPLETATO\n");
+        printf("==========================================================\n");
+        printf("Turno: %s | Obiettivo: Vittoria Massima / Danno Minimo\n", b->stm == BLACK ? "NERO" : "BIANCO");
+        printf("Simulazioni: %lld | Nodi creati: %d\n", (long long)pool->sims, pool->next);
+        printf("\n-> MOSSA SCELTA: [%d -> %d]\n", best_move.from, best_move.to);
+        printf("-> Win Rate IA stimata: %.1f%%\n", best_w * 50.0f + 50.0f);
+        printf("\nGiustificazione rispetto alle alternative:\n");
+        for (int32_t c = rnd->first_child; c >= 0; c = pool->nodes[c].next_sib) {
+            const MCTSNode *ch = &pool->nodes[c];
+            Move m = node_decode_move(ch);
+            float wr = (ch->n > 0) ? ch->w / ch->n : 0.0f;
+            printf(" - [%2d -> %2d]: WR %5.1f%% (%d visite)%s\n",
+                   m.from, m.to, wr * 50.0f + 50.0f, ch->n,
+                   (m.from == best_move.from && m.to == best_move.to) ? " [BEST]" : "");
+        }
+        printf("==========================================================\n\n");
     }
-    printf("==========================================================\n\n");
 
     return best_move;
 }
@@ -390,4 +400,27 @@ void mcts_init(MCTSPool *pool, const Board *root_board) {
 
 Move mcts_search(MCTSPool *pool, const Board *b, const MCTSParams *p) {
     return mcts_best_move(b, p, pool);
+}
+void mcts_print_pv(const MCTSPool *pool, const Board *b, int depth) {
+    Board cur = *b;
+    int32_t node = 0;
+    printf("PV: ");
+    for (int d = 0; d < depth; d++) {
+        if (node < 0) break;
+        const MCTSNode *nd = &pool->nodes[node];
+        int best_n = -1;
+        int32_t best = -1;
+        for (int32_t c = nd->first_child; c >= 0; c = pool->nodes[c].next_sib) {
+            if (pool->nodes[c].n > best_n) {
+                best_n = pool->nodes[c].n;
+                best   = c;
+            }
+        }
+        if (best < 0) break;
+        Move m = node_decode_move(&pool->nodes[best]);
+        printf("[%d->%d] ", m.from, m.to);
+        board_do_move(&cur, &m);
+        node = best;
+    }
+    printf("\n");
 }
