@@ -45,6 +45,7 @@ brew install sdl2 sdl2_ttf
 make               # compila tutto
 make test          # compila ed esegue la test suite (senza SDL)
 make run           # compila ed avvia la GUI
+make run-log       # compila ed avvia la GUI e stampa su terminale il ragionamento dell'AI
 make clean         # rimuove binari
 ```
 
