@@ -528,7 +528,6 @@ static void render_sidebar(GUI *g) {
     SDL_Color dim    = {C_TEXT_DIM, 255};
     SDL_Color yellow = {255, 200, 50, 255};
     SDL_Color green  = {80, 220, 100, 255};
-    SDL_Color red    = {255, 80, 80, 255};
 
     int x = SIDE_X + 4, y = 20;
     TTF_Font *fl = g->font_lg ? g->font_lg : g->font_sm;
@@ -667,7 +666,8 @@ static void render_menu(GUI *g) {
     int x = box_x + 20, y = box_y + 16;
 
     /* ── Modello ── */
-    if (fs) gui_draw_text(g, fs, "MODELLO AI:", x, y, yellow); y += 18;
+    if (fs) gui_draw_text(g, fs, "MODELLO AI:", x, y, yellow); 
+    y += 18;
     {
         const char *models[] = {"UCB1", "PUCT (AlphaGo)"};
         for (int i = 0; i < 2; i++) {
@@ -679,7 +679,8 @@ static void render_menu(GUI *g) {
     y += 6;
 
     /* ── Tempo ── */
-    if (fs) gui_draw_text(g, fs, "TEMPO PER MOSSA:", x, y, yellow); y += 18;
+    if (fs) gui_draw_text(g, fs, "TEMPO PER MOSSA:", x, y, yellow); 
+    y += 18;
     {
         const char *times[] = {"0.2 sec", "1.0 sec", "3.0 sec"};
         for (int i = 0; i < 3; i++) {
@@ -691,7 +692,8 @@ static void render_menu(GUI *g) {
     y += 6;
 
     /* ── Colore umano ── */
-    if (fs) gui_draw_text(g, fs, "GIOCHI CON:", x, y, yellow); y += 18;
+    if (fs) gui_draw_text(g, fs, "GIOCHI CON:", x, y, yellow); 
+    y += 18;
     {
         const char *colors[] = {"NERO (muove per primo)", "BIANCO"};
         for (int i = 0; i < 2; i++) {
