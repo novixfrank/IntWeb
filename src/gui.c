@@ -67,13 +67,15 @@ int gui_init(GUI *g) {
 
     /* Font: cerca percorsi comuni su Linux/macOS/Windows */
     const char *font_paths[] = {
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
-        "/System/Library/Fonts/Helvetica.ttc",
-        "C:\\Windows\\Fonts\\arial.ttf",
-        NULL
-    };
+    "/usr/share/fonts/dejavu-sans-fonts/DejaVuSans-Bold.ttf", // Percorso specifico Fedora
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",    // Debian/Ubuntu
+    "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",               // Arch Linux
+    "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",            // Altre distro
+    "/System/Library/Fonts/Helvetica.ttc",                    // macOS
+    "C:\\Windows\\Fonts\\arial.ttf",                          // Windows
+    "DejaVuSans-Bold.ttf",                                    // Cerca nella cartella locale
+    NULL
+};
     for (int i = 0; font_paths[i]; i++) {
         g->font_lg = TTF_OpenFont(font_paths[i], 18);
         if (g->font_lg) {
