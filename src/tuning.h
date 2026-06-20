@@ -58,8 +58,14 @@ static inline TuningParams tuning_default_params(void) {
 void tuning_init_population(Individual *pop, int n, unsigned int seed);
 
 /* Valuta tutti gli individui via round-robin tournament.
-   Usa due pool MCTS passati (uno per giocatore bianco, uno per nero). */
+   Usa due pool MCTS passati (uno per giocatore bianco, uno per nero).
+   Il parametro `model` indica con quale modello di selezione (UCB1 o
+   PUCT) vengono effettivamente giocate le partite di valutazione: è
+   fondamentale passare SEL_PUCT quando si valuta una popolazione di
+   individui pensata per PUCT, altrimenti c_puct verrebbe "misurato"
+   in partite giocate con la logica UCB1, rendendo il tuning inutile. */
 void tuning_round_robin(Individual *pop, int n, const TuningParams *tp,
+                        SelectModel model,
                         MCTSPool *pool_a, MCTSPool *pool_b);
 
 /* Una generazione genetica: selezione + crossover + mutazione */
@@ -67,9 +73,12 @@ void tuning_evolve(Individual *pop, int n, const TuningParams *tp,
                    unsigned int *seed);
 
 /* BAI: Best Arm Identification con budget fisso.
+   Anche qui `model` determina con quale algoritmo di selezione vengono
+   giocate le partite di confronto (deve coincidere con il modello della
+   popolazione passata in pop, esattamente come per tuning_round_robin).
    Restituisce l'indice del migliore individuo. */
 int  tuning_bai(Individual *pop, int n, int budget,
-                const TuningParams *tp,
+                const TuningParams *tp, SelectModel model,
                 MCTSPool *pool_a, MCTSPool *pool_b);
 
 /* Converte un Individual in MCTSParams */
