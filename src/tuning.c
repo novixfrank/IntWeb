@@ -129,6 +129,7 @@ static int play_game_between(const Individual *black, const Individual *white,
  *  tuning_round_robin
  * ══════════════════════════════════════════════ */
 void tuning_round_robin(Individual *pop, int n, const TuningParams *tp,
+                        SelectModel model,
                         MCTSPool *pool_a, MCTSPool *pool_b) {
     /* Reset statistiche */
     for (int i = 0; i < n; i++) {
@@ -136,9 +137,11 @@ void tuning_round_robin(Individual *pop, int n, const TuningParams *tp,
         pop[i].fitness = 0.0f;
     }
 
-    /* Usiamo UCB1 come modello di riferimento durante il tuning
-       (più veloce, comportamento prevedibile) */
-    SelectModel model = SEL_UCB1;
+    /* Il modello di selezione usato nelle partite di valutazione viene
+       passato dal chiamante: deve coincidere con il modello per cui la
+       popolazione è stata definita (SEL_UCB1 per pop_ucb1, SEL_PUCT per
+       pop_puct), altrimenti i parametri specifici di un modello (es.
+       c_puct) verrebbero valutati giocando partite con l'altro modello. */
 
     int total_pairs = n * (n - 1);
     int done = 0;
@@ -261,7 +264,7 @@ void tuning_evolve(Individual *pop, int n, const TuningParams *tp,
  *  il campione viene aggiornato se perde.
  * ══════════════════════════════════════════════ */
 int tuning_bai(Individual *pop, int n, int budget,
-               const TuningParams *tp,
+               const TuningParams *tp, SelectModel model,
                MCTSPool *pool_a, MCTSPool *pool_b) {
     /* Il campione è l'individuo con fitness più alta */
     sort_by_fitness(pop, n);
@@ -275,13 +278,13 @@ int tuning_bai(Individual *pop, int n, int budget,
 
         for (int g = 0; g < games_per_challenger; g++) {
             int r = play_game_between(&pop[champion], &pop[i],
-                                      SEL_UCB1, tp->time_limit,
+                                      model, tp->time_limit,
                                       pool_a, pool_b);
             if (r > 0) champ_score++;
             else if (r < 0) chal_score++;
 
             int r2 = play_game_between(&pop[i], &pop[champion],
-                                        SEL_UCB1, tp->time_limit,
+                                        model, tp->time_limit,
                                         pool_a, pool_b);
             if (r2 > 0) chal_score++;
             else if (r2 < 0) champ_score++;
@@ -319,7 +322,7 @@ void tuning_run(MCTSParams *best_ucb1, MCTSParams *best_puct,
 
     for (int gen = 0; gen < tp->generations; gen++) {
         if (tp->verbose) printf("\n[UCB1] Generazione %d/%d\n", gen+1, tp->generations);
-        tuning_round_robin(pop_ucb1, n, tp, pool_a, pool_b);
+        tuning_round_robin(pop_ucb1, n, tp, SEL_UCB1, pool_a, pool_b);
         if (tp->verbose) tuning_print_population(pop_ucb1, n);
         if (gen < tp->generations - 1)
             tuning_evolve(pop_ucb1, n, tp, &seed);
@@ -327,7 +330,7 @@ void tuning_run(MCTSParams *best_ucb1, MCTSParams *best_puct,
 
     /* BAI finale */
     int bai_budget = tp->games_per_pair * n;
-    int best_idx = tuning_bai(pop_ucb1, n, bai_budget, tp, pool_a, pool_b);
+    int best_idx = tuning_bai(pop_ucb1, n, bai_budget, tp, SEL_UCB1, pool_a, pool_b);
     *best_ucb1 = individual_to_params(&pop_ucb1[best_idx], SEL_UCB1, 1.0);
 
     if (tp->verbose) {
@@ -346,18 +349,17 @@ void tuning_run(MCTSParams *best_ucb1, MCTSParams *best_puct,
     for (int gen = 0; gen < tp->generations; gen++) {
         if (tp->verbose) printf("\n[PUCT] Generazione %d/%d\n", gen+1, tp->generations);
 
-        /* Per PUCT, adattiamo i parametri */
-        for (int i = 0; i < n; i++) {
-            MCTSParams pp = individual_to_params(&pop_puct[i], SEL_PUCT, tp->time_limit);
-            (void)pp;
-        }
-        tuning_round_robin(pop_puct, n, tp, pool_a, pool_b);
+        /* A differenza di pop_ucb1, qui le partite di valutazione devono
+           essere giocate con il modello PUCT (model = SEL_PUCT), in modo
+           che c_puct e le prior abbiano davvero un effetto sull'esito
+           delle partite usate per calcolare la fitness. */
+        tuning_round_robin(pop_puct, n, tp, SEL_PUCT, pool_a, pool_b);
         if (tp->verbose) tuning_print_population(pop_puct, n);
         if (gen < tp->generations - 1)
             tuning_evolve(pop_puct, n, tp, &seed);
     }
 
-    best_idx = tuning_bai(pop_puct, n, bai_budget, tp, pool_a, pool_b);
+    best_idx = tuning_bai(pop_puct, n, bai_budget, tp, SEL_PUCT, pool_a, pool_b);
     *best_puct = individual_to_params(&pop_puct[best_idx], SEL_PUCT, 1.0);
 
     if (tp->verbose) {
