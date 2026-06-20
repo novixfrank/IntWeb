@@ -20,7 +20,7 @@
  * NERO si muove VERSO il basso (indici crescenti)
  * BIANCO si muove VERSO l'alto (indici decrescenti)
  *
- * Regole Dama Italiana:
+Regole Dama Italiana:
  *  - Le pedine si muovono solo in avanti
  *  - Le pedine prendono in tutte le direzioni MA NON possono prendere le dame
  *  - Le dame possono muoversi avanti e indietro e tutte le duirezioni e mangiare in tutte le direzioni
