@@ -374,7 +374,6 @@ void tuning_run(MCTSParams *best_ucb1, MCTSParams *best_puct,
 int tuning_save(const char *path, const MCTSParams *ucb1, const MCTSParams *puct) {
     FILE *f = fopen(path, "w");
     if (!f) return -1;
-    fprintf(f, "# Dama Italiana MCTS – Tuned hyperparameters\n");
     fprintf(f, "ucb1_C %.6f\n",           ucb1->C);
     fprintf(f, "ucb1_prior_cap %.6f\n",   ucb1->prior_cap);
     fprintf(f, "ucb1_prior_promo %.6f\n", ucb1->prior_promo);
