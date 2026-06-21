@@ -241,6 +241,12 @@ int main(int argc, char *argv[]) {
             MCTSParams base = mcts_default_params();
             tuning_load("dama_params.txt", &base, &base);
 
+            /* ── UCB1 ──
+             * I quattro iperparametri di UCB1 vengono ottimizzati in
+             * sequenza con CLOP, ciascuno a partire dal valore corrente
+             * di `base` (frozen dopo ogni step, come già avveniva solo
+             * per C in precedenza). */
+
             /* Ottimizza C per UCB1 */
             CLOPState st_C;
             clop_init(&st_C, CLOP_PARAM_C,
@@ -248,14 +254,47 @@ int main(int argc, char *argv[]) {
             clop_optimize(&st_C, 12, &base, pool, pool2);
             base.C = st_C.theta;
 
-            /* Ottimizza c_puct per PUCT */
+            /* Ottimizza prior_cap per UCB1 */
+            CLOPState st_cap;
+            clop_init(&st_cap, CLOP_PARAM_PRIOR_CAP,
+                      base.prior_cap, 0.3f, 0.0f, 2.0f, 4, 0.2);
+            clop_optimize(&st_cap, 12, &base, pool, pool2);
+            base.prior_cap = st_cap.theta;
+
+            /* Ottimizza prior_promo per UCB1 */
+            CLOPState st_promo;
+            clop_init(&st_promo, CLOP_PARAM_PRIOR_PROMO,
+                      base.prior_promo, 0.2f, 0.0f, 1.0f, 4, 0.2);
+            clop_optimize(&st_promo, 12, &base, pool, pool2);
+            base.prior_promo = st_promo.theta;
+
+            /* ── PUCT ──
+             * Stesso schema sequenziale, ma a partire da una copia di
+             * `base` con modello PUCT: c_puct, prior_cap e prior_promo
+             * vengono ottimizzati uno dopo l'altro. */
             MCTSParams base_puct = base;
             base_puct.model = SEL_PUCT;
+
+            /* Ottimizza c_puct per PUCT */
             CLOPState st_puct;
             clop_init(&st_puct, CLOP_PARAM_C_PUCT,
-                      base_puct.c_puct, 0.5f, 0.1f, 5.0f, 4, 0.2);
+                      base_puct.c_puct, 0.5f, 0.5f, 5.0f, 4, 0.2);
             clop_optimize(&st_puct, 12, &base_puct, pool, pool2);
             base_puct.c_puct = st_puct.theta;
+
+            /* Ottimizza prior_cap per PUCT */
+            CLOPState st_puct_cap;
+            clop_init(&st_puct_cap, CLOP_PARAM_PRIOR_CAP,
+                      base_puct.prior_cap, 0.3f, 0.0f, 2.0f, 4, 0.2);
+            clop_optimize(&st_puct_cap, 12, &base_puct, pool, pool2);
+            base_puct.prior_cap = st_puct_cap.theta;
+
+            /* Ottimizza prior_promo per PUCT */
+            CLOPState st_puct_promo;
+            clop_init(&st_puct_promo, CLOP_PARAM_PRIOR_PROMO,
+                      base_puct.prior_promo, 0.2f, 0.0f, 1.0f, 4, 0.2);
+            clop_optimize(&st_puct_promo, 12, &base_puct, pool, pool2);
+            base_puct.prior_promo = st_puct_promo.theta;
 
             MCTSParams best_ucb1 = base;
             MCTSParams best_puct = base_puct;
