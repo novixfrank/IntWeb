@@ -239,7 +239,8 @@ int main(int argc, char *argv[]) {
             MCTSPool *pool = mcts_pool_create();
             MCTSPool *pool2 = mcts_pool_secondary();
             MCTSParams base = mcts_default_params();
-            tuning_load("dama_params.txt", &base, &base);
+            MCTSParams base_loaded_puct = mcts_default_params();
+            tuning_load("dama_params.txt", &base, &base_loaded_puct);
 
             /* ── UCB1 ──
              * I quattro iperparametri di UCB1 vengono ottimizzati in
