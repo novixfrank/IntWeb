@@ -123,18 +123,6 @@ Il modulo `tuning.c` implementa:
 
 ---
 
-## Risultati benchmark (esempio, Core i7)
-
-| Modello | Budget | Sims  | Sims/sec |
-|---------|--------|-------|----------|
-| UCB1    | 0.2s   | ~16k  | ~82k     |
-| UCB1    | 1.0s   | ~82k  | ~82k     |
-| UCB1    | 3.0s   | ~245k | ~82k     |
-| PUCT    | 0.2s   | ~17k  | ~85k     |
-| PUCT    | 1.0s   | ~87k  | ~87k     |
-
----
-
 ## Note tecniche
 
 - **Bitboard 32-bit**: le 32 caselle scure sono enumerate da 0 (riga 0, col 1) a 31 (riga 7, col 6). Le righe pari usano colonne dispari, le righe dispari colonne pari.
