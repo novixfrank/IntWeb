@@ -66,7 +66,7 @@ void tuning_init_population(Individual *pop, int n, unsigned int seed) {
         pop[i].losses = 0;
         pop[i].draws  = 0;
     }
-    /* Includi i valori di default nella popolazione iniziale come "ancora" */
+    /* Include i valori di default nella popolazione iniziale come "ancora" */
     if (n >= 2) {
         pop[0].C = 1.4142f; pop[0].c_puct = 2.0f;
         pop[0].prior_cap = 0.7f; pop[0].prior_promo = 0.3f;
@@ -147,7 +147,7 @@ void tuning_round_robin(Individual *pop, int n, const TuningParams *tp,
     int done = 0;
 
     for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
+        for (int j = i+1; j < n; j++) {
             if (i == j) continue;
 
             /* Gioca tp->games_per_pair partite con colori alternati */
@@ -259,7 +259,7 @@ void tuning_evolve(Individual *pop, int n, const TuningParams *tp,
 
 /* ══════════════════════════════════════════════
  *  tuning_bai
- *  Best Arm Identification semplificato:
+ *  Best Arm Identification:
  *  ogni individuo sfida il campione corrente;
  *  il campione viene aggiornato se perde.
  * ══════════════════════════════════════════════ */
@@ -535,8 +535,7 @@ void tuning_print_report(const MCTSParams *ucb1, const MCTSParams *puct,
 }
 
 /* ══════════════════════════════════════════════════════════════════
- *  CLOP – Confident Linear Optimization of Parameters
- *  Rémi Coulom (2011), adattato per Dama Italiana MCTS
+ *  CLOP – Confident Linear Optimization of Parameters adattato per Dama Italiana MCTS
  * ══════════════════════════════════════════════════════════════════ */
 
 /* Imposta il parametro `param` nel MCTSParams alla soglia `val` */
