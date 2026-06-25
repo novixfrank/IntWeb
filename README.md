@@ -10,7 +10,6 @@ Implementazione in C del gioco della Dama Italiana con intelligenza artificiale 
 ```
 dama/
 ├── Makefile
-├── test_engine.c          # test suite standalone (senza SDL)
 └── src/
     ├── board.h / board.c  # motore bitboard + regole italiane
     ├── mcts.h  / mcts.c   # MCTS: UCB1 + PUCT
@@ -43,7 +42,6 @@ brew install sdl2 sdl2_ttf
 
 ```bash
 make               # compila tutto
-make test          # compila ed esegue la test suite (senza SDL)
 make run           # compila ed avvia la GUI
 make run-log       # compila ed avvia la GUI e stampa su terminale il ragionamento dell'AI
 make clean         # rimuove file binari
@@ -59,6 +57,7 @@ make clean         # rimuove file binari
 ./dama --analysis        # analisi sperimentale UCB1 vs PUCT
 ./dama --tuning          # tuning genetico (alcuni minuti)
 ./dama --tuning --fast   # tuning veloce (meno generazioni)
+./dama --clop            # tuning con CLOP
 ```
 
 ---
