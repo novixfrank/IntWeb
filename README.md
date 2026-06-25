@@ -97,12 +97,14 @@ Il modulo `tuning.c` implementa:
 
 1. **Algoritmo Genetico**: popolazione di individui con parametri `(C, c_puct, prior_cap, prior_promo)`, crossover uniforme, mutazione gaussiana, élite preservation
 2. **Round-Robin Tournament**: ogni individuo gioca contro tutti gli altri, fitness = W − L + 0.5·D
-3. **BAI** (Best Arm Identification): sfide dirette tra campione e challenger per raffinamento finale
-4. **Salvataggio** in `dama_params.txt` (caricato automaticamente all'avvio della GUI)
+3. **Algoritmo CLOP**
+4. **BAI** (Best Arm Identification): sfide dirette tra campione e challenger per raffinamento finale
+5. **Salvataggio** in `dama_params.txt` (caricato automaticamente all'avvio della GUI)
 
 ```bash
 ./dama --tuning --fast   # ~5 min: 3 generazioni, 6 individui
 ./dama --tuning          # completo: 6 generazioni, 12 individui
+./dama --clop
 ```
 
 ---
