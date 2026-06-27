@@ -334,8 +334,7 @@ void tuning_run(MCTSParams *best_ucb1, MCTSParams *best_puct,
     *best_ucb1 = individual_to_params(&pop_ucb1[best_idx], SEL_UCB1, 1.0);
 
     if (tp->verbose) {
-        printf("\n[UCB1] Migliori parametri: C=%.3f, cap=%.3f, promo=%.3f\n",
-               best_ucb1->C, best_ucb1->prior_cap, best_ucb1->prior_promo);
+        printf("\n[UCB1] Migliori parametri: C=%.3f\n", best_ucb1->C);
     }
 
     /* ── PUCT ── */
@@ -375,8 +374,6 @@ int tuning_save(const char *path, const MCTSParams *ucb1, const MCTSParams *puct
     FILE *f = fopen(path, "w");
     if (!f) return -1;
     fprintf(f, "ucb1_C %.6f\n",           ucb1->C);
-    fprintf(f, "ucb1_prior_cap %.6f\n",   ucb1->prior_cap);
-    fprintf(f, "ucb1_prior_promo %.6f\n", ucb1->prior_promo);
     fprintf(f, "puct_c_puct %.6f\n",      puct->c_puct);
     fprintf(f, "puct_prior_cap %.6f\n",   puct->prior_cap);
     fprintf(f, "puct_prior_promo %.6f\n", puct->prior_promo);
@@ -397,8 +394,6 @@ int tuning_load(const char *path, MCTSParams *ucb1, MCTSParams *puct) {
     while (fscanf(f, "%63s %f\n", key, &val) == 2) {
         if (key[0] == '#') { /* commento */ continue; }
         if      (strcmp(key, "ucb1_C")           == 0) ucb1->C           = val;
-        else if (strcmp(key, "ucb1_prior_cap")   == 0) ucb1->prior_cap   = val;
-        else if (strcmp(key, "ucb1_prior_promo") == 0) ucb1->prior_promo = val;
         else if (strcmp(key, "puct_c_puct")      == 0) puct->c_puct      = val;
         else if (strcmp(key, "puct_prior_cap")   == 0) puct->prior_cap   = val;
         else if (strcmp(key, "puct_prior_promo") == 0) puct->prior_promo = val;
@@ -489,10 +484,8 @@ void tuning_print_report(const MCTSParams *ucb1, const MCTSParams *puct,
         }
     }
 
-    printf("\nParametri ottimali UCB1: C=%.3f, prior_cap=%.3f, prior_promo=%.3f\n",
-           ucb1->C, ucb1->prior_cap, ucb1->prior_promo);
-    printf("Parametri ottimali PUCT: c_puct=%.3f, prior_cap=%.3f, prior_promo=%.3f\n\n",
-           puct->c_puct, puct->prior_cap, puct->prior_promo);
+    printf("\nParametri ottimali UCB1: C=%.3f\n", ucb1->C);
+    printf("Parametri ottimali PUCT: c_puct=%.3f, prior_cap=%.3f, prior_promo=%.3f\n\n", puct->c_puct, puct->prior_cap, puct->prior_promo);
 
     /* Match UCB1 vs PUCT a 0.2s: 10 partite */
     printf("Match UCB1 vs PUCT (10 partite ciascuno, budget 0.2s):\n");
