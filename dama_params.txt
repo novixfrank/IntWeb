@@ -1,6 +1,4 @@
 ucb1_C 1.898155
-ucb1_prior_cap 0.856950
-ucb1_prior_promo 0.332447
 puct_c_puct 3.347946
 puct_prior_cap 0.801054
 puct_prior_promo 0.454816
