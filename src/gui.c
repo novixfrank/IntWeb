@@ -67,7 +67,7 @@ int gui_init(GUI *g) {
 
     /* Font: cerca percorsi comuni su Linux/macOS/Windows */
     const char *font_paths[] = {
-    "/usr/share/fonts/dejavu-sans-fonts/DejaVuSans-Bold.ttf", // Percorso specifico Fedora
+    "/usr/share/fonts/dejavu-sans-fonts/DejaVuSans-Bold.ttf", // Fedora
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",    // Debian/Ubuntu
     "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",               // Arch Linux
     "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",            // Altre distro
@@ -573,12 +573,15 @@ static void render_sidebar(GUI *g) {
 
         if (g->cfg.params.model == SEL_UCB1) {
             snprintf(buf, sizeof(buf), "  C = %.3f", g->cfg.params.C);
+            gui_draw_text(g, fs, buf, x, y, dim); y += 16;
         } else {
             snprintf(buf, sizeof(buf), "  c_puct = %.3f", g->cfg.params.c_puct);
+            gui_draw_text(g, fs, buf, x, y, dim); y += 16;
+            snprintf(buf, sizeof(buf), "  prior_cap = %.2f", g->cfg.params.prior_cap);
+            gui_draw_text(g, fs, buf, x, y, dim); y += 16;
+            snprintf(buf, sizeof(buf), "  prior_promo = %.2f", g->cfg.params.prior_promo);
+            gui_draw_text(g, fs, buf, x, y, dim); y += 16;
         }
-        gui_draw_text(g, fs, buf, x, y, dim); y += 16;
-        snprintf(buf, sizeof(buf), "  prior_cap = %.2f", g->cfg.params.prior_cap);
-        gui_draw_text(g, fs, buf, x, y, dim); y += 16;
 
         SDL_RenderDrawLine(g->renderer, SIDE_X, y, WIN_W - 5, y); y += 8;
 
